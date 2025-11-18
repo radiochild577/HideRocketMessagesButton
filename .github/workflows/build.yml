@@ -1,0 +1,42 @@
+name: Build Theos Tweak
+
+on:
+  push:
+    branches: [ main ]  # Triggers on push to main; change if needed
+  workflow_dispatch:  # Allows manual runs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Linux runner (faster/cheaper than macOS)
+
+    steps:
+    - uses: actions/checkout@v4  # Clones your repo
+
+    - name: Cache Theos and SDKs  # Speeds up repeated builds
+      uses: actions/cache@v4
+      with:
+        path: |
+          theos
+          ~/.theos/sdks
+        key: ${{ runner.os }}-theos-${{ hashFiles('**/Makefile') }}
+
+    - name: Build with Theos
+      uses: Randomblock1/theos-action@v1.4  # Latest version [1]
+      with:
+        theos-dir: 'theos'
+        theos-src: 'https://github.com/theos/theos'
+        theos-sdks: 'https://github.com/theos/sdks'
+        theos-sdks-branch: 'master'
+        orion: 'false'  # Set to 'true' if using Swift (not needed here)
+
+    - name: Make Package
+      run: |
+        export THEOS=theos
+        make clean
+        make package THEOS_PACKAGE_SCHEME=rootless  # For rootless jailbreaks; remove for rootful
+
+    - name: Upload .deb Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: HideRocketMessagesButton.deb
+        path: packages/*.deb  # Uploads the built .deb(s)
