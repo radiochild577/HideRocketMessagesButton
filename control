@@ -1,0 +1,9 @@
+Package: com.yourname.hiderocketbutton
+Name: Hide Rocket Messages Button
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Hides and disables the messages navigation button in Rocket tweak (e.g., manual read/ARK feature). Based on FLEX analysis.
+Maintainer: Your Name <your.email@example.com>
+Author: Your Name
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 15.0)
