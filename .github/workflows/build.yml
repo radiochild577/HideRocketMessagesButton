@@ -1,42 +1,41 @@
-name: Build Theos Tweak
+name: CI
 
-on:
-  push:
-    branches: [ main ]  # Triggers on push to main; change if needed
-  workflow_dispatch:  # Allows manual runs
+on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Linux runner (faster/cheaper than macOS)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v4  # Clones your repo
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
 
-    - name: Cache Theos and SDKs  # Speeds up repeated builds
-      uses: actions/cache@v4
-      with:
-        path: |
-          theos
-          ~/.theos/sdks
-        key: ${{ runner.os }}-theos-${{ hashFiles('**/Makefile') }}
+      - name: Check cache
+        run: |
+          echo upstream_heads=`git ls-remote https://github.com/theos/theos | head -n 1 | cut -f 1`-`git ls-remote https://github.com/theos/sdks | head -n 1 | cut -f 1` >> $GITHUB_ENV
 
-    - name: Build with Theos
-      uses: Randomblock1/theos-action@v1.4  # Latest version [1]
-      with:
-        theos-dir: 'theos'
-        theos-src: 'https://github.com/theos/theos'
-        theos-sdks: 'https://github.com/theos/sdks'
-        theos-sdks-branch: 'master'
-        orion: 'false'  # Set to 'true' if using Swift (not needed here)
+      - name: Use cache
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/theos
+          key: ${{ runner.os }}-${{ env.upstream_heads }}
 
-    - name: Make Package
-      run: |
-        export THEOS=theos
-        make clean
-        make package THEOS_PACKAGE_SCHEME=rootless  # For rootless jailbreaks; remove for rootful
+      - name: Prepare Theos
+        # Don't use @main in production, this repo is specifically for testing it.
+        uses: Randomblock1/theos-action@main
 
-    - name: Upload .deb Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: HideRocketMessagesButton.deb
-        path: packages/*.deb  # Uploads the built .deb(s)
+      - name: Build package
+        run: |
+          rm -f packages/*
+          make package FINALPACKAGE=1
+
+      - name: Upload package
+        uses: actions/upload-artifact@v3
+        with:
+          name: "Package built by ${{ matrix.os }}"
+          path: ${{ github.workspace }}/packages/*.deb
